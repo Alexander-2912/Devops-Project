@@ -203,3 +203,190 @@ Bagian ini mulai mendefinisikan layanan-layanan yang akan dijalankan sebagai kon
 6. volumes::
 
 Mendefinisikan volume Docker bernama "postgres-data" yang digunakan oleh layanan postgres untuk menyimpan data PostgreSQL
+
+## Testing Menggunakan Selenium
+```
+import pytest
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+import chromedriver_autoinstaller
+from pyvirtualdisplay import Display
+
+display = Display(visible=0, size=(300,300))
+display.start()
+
+chromedriver_autoinstaller.install()
+
+chrome_options = webdriver.ChromeOptions()
+
+options = [
+    "--window-size=1200, 1200",
+    "--ignore-certificate-errors"
+]
+
+for option in options:
+    chrome_options.add_argument(options)
+
+class TestFormElements:
+    def setup_class(cls):
+        cls.driver = webdriver.Chrome(options=chrome_options)
+        cls.driver.get("http://localhost:5173/login")
+
+    def teardown_class(cls):
+        cls.driver.quit()
+
+    def test_nama_label(self):
+        nama_label = self.driver.find_element(By.XPATH, "//label[@for='username']")
+        assert nama_label.text == "Username", "pengecekan nama gagal"
+
+    def test_password_label(self):
+        password_label = self.driver.find_element(By.XPATH, "//label[@for='password']")
+        assert password_label.text == "Password", "pengecekan password gagal"
+```
+
+1. Import Libraries:
+
+- import pytest: Mengimport library Pytest untuk menjalankan test case.
+
+- from selenium import webdriver: Mengimport webdriver dari Selenium untuk mengontrol browser.
+
+- from selenium.webdriver.common.by import By: Mengimport metode untuk menemukan elemen di halaman web.
+
+- import chromedriver_autoinstaller: Mengimport library untuk menginstal ChromeDriver secara otomatis.
+
+- from pyvirtualdisplay import Display: Mengimport library untuk membuat virtual display (digunakan untuk menjalankan tes di lingkungan tanpa GUI).
+
+2. Konfigurasi Virtual Display:
+
+- display = Display(visible=0, size=(300, 300)): Membuat virtual display dengan ukuran 300x300 piksel dan tidak terlihat.
+
+- display.start(): Memulai virtual display.
+
+3. Instalasi ChromeDriver:
+
+- chromedriver_autoinstaller.install(): Mengunduh dan menginstal ChromeDriver.
+
+4. Konfigurasi Chrome Options:
+
+- chrome_options = webdriver.ChromeOptions(): Membuat objek untuk menyimpan opsi untuk browser Chrome.
+  
+- options : Daftar opsi untuk browser Chrome
+  
+- --window-size=1200, 1200: Mengatur ukuran jendela browser menjadi 1200x1200 piksel.
+  
+- --ignore-certificate-errors: Mengabaikan kesalahan sertifikat SSL.
+  
+- for option in options: Menambahkan setiap opsi ke objek chrome_options.
+
+5. Test Class:
+
+- class TestFormElements:: Mendefinisikan kelas untuk menampung test case.
+
+6. Setup dan Teardown:
+
+- def setup_class(cls):  Dijalankan sebelum semua test case dalam kelas ini dijalankan:
+
+- cls.driver = webdriver.Chrome(options=chrome_options): Membuat instance Chrome webdriver dengan opsi yang telah ditentukan.
+
+- cls.driver.get("http://localhost:5173/login"): Membuka halaman login di browser.
+
+- def teardown_class(cls): Dijalankan setelah semua test case selesai dijalankan:
+
+- cls.driver.quit(): Menutup browser.
+
+7. Test Case:
+
+- def test_nama_label(self):  Test case untuk memeriksa label nama:
+
+- nama_label = self.driver.find_element(By.XPATH, "//label[@for='username']]"): Menemukan label nama menggunakan XPath.
+
+- assert nama_label.text == "Username", "pengecekan nama gagal": Memastikan teks label nama adalah "Username".
+
+- def test_password_label(self):  Test case untuk memeriksa label password:
+
+- password_label = self.driver.find_element(By.XPATH, "//label[@for='password']]"): Menemukan label password.
+
+- assert password_label.text == "Password", "pengecekan password gagal": Memastikan teks label password adalah "Password".
+
+## Continuous Integration
+```
+name: CI (Continuous Integration)
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build-testing:
+    name: Build and Testing
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+    
+      - name: Install Docker Compose 
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+      
+      - name: Build and Run Container
+        run: |
+          sudo docker compose up -d
+
+      - name: Install Requirements for Testing
+        run: |
+          pip install -r testing\requirements.txt
+
+      - name: Testing
+        run: |
+          sleep 20
+          pytest testing/test.py
+```
+
+1. Name:
+
+name: CI (Continuous Integration): Memberi nama pada workflow, memudahkan identifikasi.
+
+2. On:
+
+- pull_request: Menentukan bahwa workflow ini akan dijalankan ketika ada pull request dibuat.
+
+- branches: [ "main" ]: Menentukan bahwa workflow ini hanya akan dijalankan untuk pull request yang dibuat terhadap branch "main".
+
+3. Jobs:
+
+Bagian ini mendefinisikan tugas-tugas yang akan dijalankan dalam workflow.
+
+4. build-testing:
+
+- name: Build and Testing: Memberi nama pada job ini.
+
+- runs-on: windows-latest: Menentukan bahwa job ini akan dijalankan pada runner Windows.
+
+5. Steps:
+
+Bagian ini mendefinisikan langkah-langkah yang akan dijalankan dalam job.
+
+- Checkout repository:
+
+uses: actions/checkout@v2: Mengambil kode dari repository ke runner.
+
+- Install Docker Compose:
+
+sudo apt-get update: Memperbarui daftar paket yang tersedia.
+sudo apt-get install -y docker-compose: Menginstal Docker Compose.
+
+- Build and Run Container:
+
+sudo docker compose up -d: Menjalankan perintah Docker Compose untuk membangun dan menjalankan kontainer.
+
+- Install Requirements for Testing:
+
+pip install -r testing\requirements.txt: Menginstal dependensi yang diperlukan untuk menjalankan tes.
+
+- Testing:
+
+sleep 20: Menunggu 20 detik untuk memastikan kontainer sudah berjalan dengan baik.
+pytest testing/test.py: Menjalankan tes yang terdapat pada file testing/test.py.

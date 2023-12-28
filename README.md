@@ -44,3 +44,55 @@ Menjalankan perintah untuk menginstal dependencies yang didefinisikan dalam file
 
 Menentukan perintah default yang akan dijalankan ketika container dijalankan. Dalam hal ini, container akan menjalankan skrip Python "run.py". Perintah CMD ini dapat digantikan 
 jika ada perintah yang diberikan saat menjalankan container.
+
+```
+FROM node:18
+
+WORKDIR /frontend
+
+COPY package*.json ./
+COPY .env ./
+
+RUN npm install
+COPY . .
+
+RUN npm run build
+
+EXPOSE 8080
+
+CMD ["npm", "run", "preview"]
+```
+
+1.FROM node:18:
+
+Menggunakan base image dari Node.js versi 18. Ini adalah dasar untuk image yang akan dibuat.
+
+2. WORKDIR /frontend:
+
+Menetapkan direktori kerja (working directory) di dalam container ke "/frontend". Ini adalah lokasi di dalam container di mana file-file proyek akan ditempatkan dan perintah-perintah selanjutnya akan dijalankan.
+3. COPY package.json ./*:
+
+Menyalin file package.json dan package-lock.json (jika ada) dari direktori saat ini ke direktori kerja di dalam container. Ini dilakukan terlebih dahulu untuk memanfaatkan layer cache Docker dan mengoptimalkan proses pembangunan.
+
+4. COPY .env ./:
+
+Menyalin file ".env" dari direktori saat ini ke direktori kerja di dalam container. Ini memasukkan konfigurasi lingkungan yang diperlukan oleh aplikasi.
+
+5. RUN npm install:
+
+Menjalankan perintah untuk menginstal semua dependencies yang didefinisikan dalam file package.json.
+
+6. COPY . ./:
+
+Menyalin seluruh konten dari direktori saat ini ke direktori kerja di dalam container. Ini mencakup file-file proyek dan aplikasi yang akan dijalankan.
+7. RUN npm run build:
+
+Menjalankan perintah untuk membangun aplikasi frontend. Ini mungkin termasuk kompilasi kode, pengelolaan dependensi, dan langkah-langkah pembangunan lainnya.
+
+8. EXPOSE 8080:
+
+Menginformasikan Docker bahwa aplikasi ini akan berjalan pada port 8080. Ini memberikan informasi kepada pengguna Docker, tetapi tidak membuka atau memetakan port.
+
+9. CMD ["npm", "run", "preview"]:
+
+Menentukan perintah default yang akan dijalankan ketika container dijalankan. Dalam hal ini, container akan menjalankan skrip "preview" dari file npm, yang mungkin ditentukan dalam skrip "scripts" di package.json.

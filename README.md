@@ -390,3 +390,196 @@ pip install -r testing\requirements.txt: Menginstal dependensi yang diperlukan u
 
 sleep 20: Menunggu 20 detik untuk memastikan kontainer sudah berjalan dengan baik.
 pytest testing/test.py: Menjalankan tes yang terdapat pada file testing/test.py.
+
+## Continuous Delivery & Deployment
+```
+    name: CD (Continuous Delivery & Deployment)
+
+    on: workflow_dispatch
+    
+    jobs:
+        
+        build-push:
+            name: Build and Push Image To DockerHub
+            runs-on: ubuntu-latest
+    
+            steps:
+                - name: Checkout Repository
+                  uses: actions/checkout@v2
+    
+                - name: Login to Docker Hub
+                  uses: docker/login-action@v2
+                  with:
+                    username: ${{ secrets.DOCKERHUB_USERNAME }}
+                    password: ${{ secrets.DOCKERHUB_TOKEN }}
+    
+                - name: Set up Docker Buildx
+                  uses: docker/setup-buildx-action@v2
+                  
+                - name: Build and push flaskapp
+                  uses: docker/build-push-action@v4
+                  with:
+                    context: ./Final/Flask
+                    file: ./Final/Flask/Dockerfile
+                    push: true
+                    tags: ${{ secrets.DOCKERHUB_USERNAME }}/flask:${{ github.run_number }}/Flask:latest
+                      
+                - name: Build and push postgres
+                  uses: docker/build-push-action@v4
+                  with:
+                    context: ./Final/vue_project
+                    file: ./Final/vue_project/Dockerfile
+                    push: true
+                    tags: ${{ secrets.DOCKERHUB_USERNAME }}/vue_project:${{ github.run_number }}/vue_project:latest
+        deploy: 
+            name: Deploy to Server
+            runs-on: self-hosted
+            needs: build-push
+    
+            steps:
+              - name : Pull latest images
+                run: |
+                    docker pull ${{ secrets.DOCKERHUB_USERNAME }}/Flask:latest
+                    docker pull ${{ secrets.DOCKERHUB_USERNAME }}/vue_project:latest
+          
+              - name: Stop and Remove Existing Containers and Networks
+                run: |
+                    docker stop $(docker ps -a -q) && docker rm $(docker ps -a -q)
+                    docker network prune -f
+    
+              - name: Create Network and Run containers
+                run : |
+                  sudo docker compose up -d
+
+              - name: Remove unused data
+                run: |
+                  docker system prune -af
+```
+
+1. Name:
+
+name: CD (Continuous Delivery & Deployment): Memberi nama pada workflow, memudahkan identifikasi.
+
+2. On:
+
+workflow_dispatch: Menentukan bahwa workflow ini akan dijalankan secara manual, bukan otomatis saat ada event tertentu.
+
+3. Jobs:
+
+Bagian ini mendefinisikan tugas-tugas yang akan dijalankan dalam workflow.
+
+4. build-push:
+
+- name: Build and Push Image To DockerHub: Memberi nama pada job ini.
+- runs-on: windows-latest: Menentukan bahwa job ini akan dijalankan pada runner windows.
+
+5. Steps (build-push):
+
+- Checkout Repository: Mengambil kode dari repository ke runner.
+
+- Login to Docker Hub: Login ke Docker Hub untuk mendorong image.
+
+- Set up Docker Buildx: Mengatur Docker Buildx untuk membangun image multi-arsitektur.
+
+- Build and push flaskapp: Membangun dan mendorong image flaskapp ke Docker Hub.
+
+- Build and push vue_project: Membangun dan mendorong image vue_project ke Docker Hub.
+
+6. deploy:
+
+- name: Deploy to Server: Memberi nama pada job ini.
+
+- runs-on: self-hosted: Menentukan bahwa job ini akan dijalankan pada runner yang di-host sendiri.
+
+- needs: build-push: Menentukan bahwa job ini bergantung pada job build-push untuk selesai terlebih dahulu.
+
+7. Steps (deploy):
+
+- Pull latest images: Menarik image terbaru dari Docker Hub.
+
+- Stop and Remove Existing Containers and Networks: Menghentikan dan menghapus kontainer dan jaringan yang sudah ada.
+
+- Create Network and Run containers: Membuat jaringan dan menjalankan kontainer menggunakan Docker Compose.
+
+- Remove unused data: Menghapus data yang tidak digunakan untuk menghemat ruang disk.
+
+## Continue Development
+
+```
+name: CD (Continue Deployment)
+
+on: workflow_dispatch
+
+jobs:
+    deploy:
+        name: Deploy to Server
+        runs-on: self-hosted
+
+        steps:
+            - name : Pull newest images
+              run: |
+                docker pull ${{secrets.DOCKERHUB_USERNAME}}//Flask:${{github.run_number}}
+                docker pull ${{secrets.DOCKERHUB_USERNAME}}//vue_project:${{github.run_number}}
+
+            - name : Stop and Remove Existing Containers and Networks
+              run: |
+                docker stop $(docker ps -a -q) && docker rm $(docker ps -a -q)
+                docker network prune -f
+
+            - name : Create Network and Run Containers
+              run: |
+                docker network create vite
+                docker run -d -p 5000:5000 --network vite --hostname Flask --mount "type=volume,source=pgdata,destination=/var/lib" --name flask -e
+                sleep 5
+                docker run -d -p 5173:5173 --network vite --hostname vue_project %{{ secret.DOCKERHUB_USERNAME}}/vue_project:%{{github.run_number}}
+
+            - name : Remove unused data
+              run: |
+                docker system prune -af
+```
+
+1. Name:
+
+name: CD (Continue Deployment): Memberi nama pada workflow, memudahkan identifikasi.
+
+2. On:
+
+workflow_dispatch: Menentukan bahwa workflow ini akan dijalankan secara manual, bukan otomatis saat ada event tertentu.
+
+3. Jobs:
+
+Bagian ini mendefinisikan tugas-tugas yang akan dijalankan dalam workflow.
+
+4. deploy:
+
+- name: Deploy to Server: Memberi nama pada job ini.
+
+- runs-on: self-hosted: Menentukan bahwa job ini akan dijalankan pada runner yang di-host sendiri (bukan runner GitHub).
+
+5. Steps:
+
+Pull newest images:
+- docker pull ...: Menarik image terbaru dari Docker Hub menggunakan tag yang menyertakan nomor run workflow, memastikan penggunaan image yang sesuai dengan deployment ini.
+
+Stop and Remove Existing Containers and Networks:
+- docker stop ...: Menghentikan semua kontainer yang sedang berjalan.
+- docker rm ...: Menghapus semua kontainer yang telah dihentikan.
+- docker network prune -f: Menghapus semua jaringan yang tidak digunakan.
+
+Create Network and Run Containers:
+
+- docker network create vite: Membuat jaringan baru bernama "vite" untuk menghubungkan kontainer.
+- docker run ... flask: Menjalankan kontainer untuk aplikasi Flask:
+- -d: Menjalankan kontainer di background.
+- -p 5000:5000: Memetakan port internal 5000 ke port 5000 pada host.
+- --network vite: Menempatkan kontainer pada jaringan "vite".
+- --hostname Flask: Memberikan hostname "Flask" pada kontainer.
+- --mount ...: Memasang volume bernama "pgdata" ke direktori "/var/lib" di dalam kontainer, kemungkinan untuk penyimpanan data PostgreSQL.
+- --name flask: Memberikan nama "flask" pada kontainer.
+- -e: Mengatur variabel lingkungan, namun nilainya tidak ditampilkan dalam kode yang diberikan.
+- sleep 5: Menunggu 5 detik untuk memastikan kontainer Flask sudah berjalan dengan baik sebelum menjalankan kontainer vue_project.
+- docker run ... vue_project: Menjalankan kontainer untuk aplikasi vue_project dengan pengaturan yang mirip dengan kontainer Flask.
+
+Remove unused data:
+
+docker system prune -af: Menghapus semua data yang tidak digunakan, seperti image, kontainer, dan volume yang tidak lagi terpakai, untuk menghemat ruang disk.

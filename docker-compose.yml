@@ -1,0 +1,40 @@
+version: '3.4'
+
+services:
+  flask-app:
+    container_name: flask-compose
+    image: flask:0.0.6
+    build:
+      context: ./Final/Flask
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "5010:5000"
+    depends_on:
+      - postgres
+
+  postgres:
+    container_name: postgres-compose
+    image: postgres:12
+    restart: always
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  frontend:
+    image: frontend:latest
+    build:
+      context: ./Final/vue_project
+      dockerfile: Dockerfile
+    ports:
+      - 8090:8080
+    depends_on:
+      - flask-app 
+
+volumes:
+  postgres-data:
